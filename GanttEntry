@@ -31,11 +31,13 @@ public class GanttEntry {
         return burstAtEnd; 
     }
 
-    public void setEndTime(int s) { 
-        endTime    = s; 
-    }
 
-    public void setBurstAtEnd(int s) { 
-        burstAtEnd = s; 
-    }
+
+    public void setEndTime(int endTime) {
+         this.endTime = endTime; 
+        }
+
+    public void setBurstAtEnd(int burstAtEnd) {
+        this.burstAtEnd = burstAtEnd; 
+        }
 }
