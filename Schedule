@@ -46,9 +46,6 @@ public class Schedule {
                 }
             }
 
-            if (toRun == null) { 
-                currentTime++; continue; 
-            }
             
             queue.remove(toRun);
             toRun.setStartTime(currentTime);
