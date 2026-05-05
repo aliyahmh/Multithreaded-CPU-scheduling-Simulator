@@ -1,0 +1,41 @@
+public class GanttEntry {
+    private int processId;
+    private int startTime;
+    private int endTime;
+    private int burstAtStart;
+    private int burstAtEnd;
+
+    public GanttEntry(int processId, int startTime, int burstAtStart) {
+        this.processId    = processId;
+        this.startTime    = startTime;
+        this.burstAtStart = burstAtStart;
+    }
+
+    public int getProcessId() { 
+        return processId; 
+    }
+
+    public int getStartTime() { 
+        return startTime; 
+    }
+
+    public int getEndTime() { 
+        return endTime; 
+    }
+
+    public int getBurstAtStart() {
+         return burstAtStart; 
+        }
+
+    public int getBurstAtEnd() { 
+        return burstAtEnd; 
+    }
+
+    public void setEndTime(int s) { 
+        endTime    = s; 
+    }
+
+    public void setBurstAtEnd(int s) { 
+        burstAtEnd = s; 
+    }
+}
