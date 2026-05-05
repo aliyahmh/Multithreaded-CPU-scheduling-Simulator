@@ -1,0 +1,152 @@
+import java.util.*;
+import java.util.concurrent.BlockingQueue;
+
+
+public class Schedule {
+
+    private static final int TIME_QUANTUM = 5; // ms - Round Robin
+
+    private BlockingQueue<Process> readyQueue;
+    private JobLoaderThread jobLoader;
+
+    private List<GanttEntry> gantt;
+    private int currentTime;
+
+
+    public Schedule(BlockingQueue<Process> readyQueue, JobLoaderThread jobLoader) {
+        this.readyQueue  = readyQueue;
+        this.jobLoader   = jobLoader;
+        this.gantt       = new ArrayList<>();
+        this.currentTime = 0;
+    }
+
+    // Shortest Job First (Non-Preemptive)
+     
+    public List<GanttEntry> shortestJobFirst() {
+        gantt.clear();
+        currentTime = 0;
+
+        // Copy readyQueue into a local list
+        List<Process> queue = new ArrayList<>(readyQueue);
+
+        System.out.println("\n Starting The Shortest Job First (SJF) ");
+
+        while (!queue.isEmpty()) {
+
+            // select shortest burst time
+           
+            Process toRun = queue.get(0);
+            for (Process p : queue) {
+                if (p.getBurstTime() < toRun.getBurstTime()) {
+                    toRun = p;
+                } else if (p.getBurstTime() == toRun.getBurstTime()) {
+                    if (p.getArrivalOrder() < toRun.getArrivalOrder()) {
+                        toRun = p;
+                    }
+                }
+            }
+
+            if (toRun == null) { 
+                currentTime++; continue; 
+            }
+            
+            queue.remove(toRun);
+            toRun.setStartTime(currentTime);
+            toRun.setState("running");
+
+            System.out.printf("[SJF] Dispatching P%d | Burst: %d ms | t=%d%n",
+                    toRun.getProcessId(), toRun.getBurstTime(), currentTime);
+
+            GanttEntry entry = new GanttEntry(
+                    toRun.getProcessId(), currentTime, toRun.getRemainingTime());
+
+            
+            while (toRun.getRemainingTime() > 0) {
+                for (Process p : queue) p.setWaitingTime(p.getWaitingTime() + 1);
+                toRun.setRemainingTime(toRun.getRemainingTime() - 1);
+                currentTime++;
+            }
+
+            toRun.setState("terminated");
+            toRun.setTerminationTime(currentTime);
+            toRun.setTurnaroundTime(currentTime); 
+
+            entry.setEndTime(currentTime);
+            entry.setBurstAtEnd(0);
+            gantt.add(entry);
+
+            jobLoader.notifyProcessCompleted(toRun);
+
+            System.out.printf("[SJF] P%d done | WT: %d ms | TAT: %d ms%n",
+                    toRun.getProcessId(), toRun.getWaitingTime(), toRun.getTurnaroundTime());
+        }
+
+        return gantt;
+    }
+
+    //Round Robin (q = 5 ms)
+
+    public List<GanttEntry> roundRobin() {
+        gantt.clear();
+        currentTime = 0;
+
+        Queue<Process> rrQueue = new LinkedList<>(readyQueue);
+
+        System.out.println("\nStarting Round Robin (RR) (q=" + TIME_QUANTUM + " ms)");
+
+        while (!rrQueue.isEmpty()) {
+
+            Process toRun = rrQueue.poll();
+            toRun.setState("running");
+
+            // set start time on first dispatch only
+             if (toRun.getStartTime() == -1){
+                toRun.setStartTime(currentTime);
+            }
+
+            int slice = Math.min(TIME_QUANTUM, toRun.getRemainingTime());
+            int burstAtStart = toRun.getRemainingTime();
+
+            System.out.printf("[RR] Dispatching P%d | Remaining: %d ms | Slice: %d ms | t=%d%n",
+                    toRun.getProcessId(), burstAtStart, slice, currentTime);
+
+            GanttEntry entry = new GanttEntry(
+                    toRun.getProcessId(), currentTime, burstAtStart);
+
+            for (int tick = 0; tick < slice; tick++) {
+                for (Process p : rrQueue) p.setWaitingTime(p.getWaitingTime() + 1);
+                toRun.setRemainingTime(toRun.getRemainingTime() - 1);
+                currentTime++;
+            }
+
+            entry.setEndTime(currentTime);
+            entry.setBurstAtEnd(toRun.getRemainingTime());
+            gantt.add(entry);
+
+            if (toRun.getRemainingTime() == 0) {
+                // Finished
+                toRun.setState("terminated");
+                toRun.setTerminationTime(currentTime);
+                toRun.setTurnaroundTime(currentTime);
+
+                jobLoader.notifyProcessCompleted(toRun);
+
+                System.out.printf("[RR] P%d done | WT: %d ms | TAT: %d ms%n",
+                        toRun.getProcessId(), toRun.getWaitingTime(), toRun.getTurnaroundTime());
+            } else {
+                // Preempted   back of queue
+                toRun.setState("ready");
+                rrQueue.add(toRun);
+            }
+        }
+
+        return gantt;
+    }
+
+    public List<GanttEntry> getGantt() { 
+        return gantt; 
+    }
+    public int getCurrentTime() { 
+        return currentTime; 
+    }
+}
