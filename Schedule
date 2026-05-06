@@ -140,6 +140,133 @@ public class Schedule {
         return gantt;
     }
 
+
+
+
+    /* Priority Scheduling (Non-Preemptive). */
+    public List<GanttEntry> priorityScheduling() {
+        gantt.clear();
+        currentTime = 0;
+
+        // Copy ready queue into a local list
+        List<Process> queue = new ArrayList<>(readyQueue);
+
+        // Initializing ready and wait time (all processes arrive at time 0)
+        for (Process p : queue) {
+            p.setLastReadyTime(0);
+            p.setLastAgedTime(0);
+        }
+
+        System.out.println("\n Starting Priority Scheduling (Non-Preemptive) ");
+
+        while (!queue.isEmpty()) {
+
+            // Check starvation & apply aging before selecting
+            checkStarvationAndAge(queue);
+
+            // Select the process with lowest priority number (ties are broken by arrival order)
+            Process toRun = queue.get(0);
+            for (Process p : queue) {
+                if (p.getPriority() < toRun.getPriority()) {
+                    toRun = p;
+                } else if (p.getPriority() == toRun.getPriority()) {
+                    if (p.getArrivalOrder() < toRun.getArrivalOrder()) {
+                        toRun = p;
+                    }
+                }
+            }
+
+            // Dispatching the selected process
+            queue.remove(toRun);
+            toRun.setState("running");
+
+            // Set start time (on first dispatch only)
+            if (toRun.getStartTime() == -1) {
+                toRun.setStartTime(currentTime);
+            }
+
+            System.out.printf("[Priority] Dispatching P%d | Priority: %d (original: %d) "
+                    + "| Burst: %d ms | t=%d%n",
+                    toRun.getProcessId(), toRun.getPriority(),
+                    toRun.getOriginalPriority(), toRun.getRemainingTime(), currentTime);
+
+            // Create Gantt entry
+            GanttEntry entry = new GanttEntry(
+                    toRun.getProcessId(), currentTime, toRun.getRemainingTime());
+
+            // Run to until completed (non-preemptive)
+            while (toRun.getRemainingTime() > 0) {
+
+                // Increment waiting time for all processes still in the queue
+                for (Process p : queue) {
+                    p.setWaitingTime(p.getWaitingTime() + 1);
+                }
+
+                // Check starvation and apply aging for waiting processes
+                checkStarvationAndAge(queue);
+
+                // Execute 1 ms of the running process
+                toRun.setRemainingTime(toRun.getRemainingTime() - 1);
+                currentTime++;
+            }
+
+            // Process finished
+            toRun.setState("terminated");
+            toRun.setTerminationTime(currentTime);
+            toRun.setTurnaroundTime(currentTime);
+
+            entry.setEndTime(currentTime);
+            entry.setBurstAtEnd(0);
+            gantt.add(entry);
+
+            // Notify job loader to free memory
+            jobLoader.notifyProcessCompleted(toRun);
+
+            System.out.printf("[Priority] P%d done | WT: %d ms | TAT: %d ms | Starved: %s%n",
+                    toRun.getProcessId(), toRun.getWaitingTime(),
+                    toRun.getTurnaroundTime(), toRun.isStarved() ? "YES" : "NO");
+        }
+
+        return gantt;
+    }
+
+    /* Priority helper method: Checks each process in the queue for starvation and applies aging. */
+    private void checkStarvationAndAge(List<Process> queue) {
+        int n = queue.size();
+        if (n == 0) return;
+
+        int starvationThreshold = n * 5; // N × 5 ms
+
+        for (Process p : queue) {
+
+            int waitingSince = currentTime - p.getLastReadyTime();
+
+            // Check starvation
+            if (waitingSince > starvationThreshold) {
+
+                // Mark as starved (first time detection)
+                if (!p.isStarved()) {
+                    p.setStarved(true);
+                    p.setStarvationStartTime(currentTime);
+                    System.out.printf("[Priority] P%d is STARVED (waited %d ms > threshold %d ms) at t=%d%n",
+                            p.getProcessId(), waitingSince, starvationThreshold, currentTime);
+                }
+
+                // Apply aging every 4 ms
+                if (currentTime - p.getLastAgedTime() >= 4) {
+                    if (p.getPriority() > 1) { 
+                        p.setPriority(p.getPriority() - 1);
+                        p.setLastAgedTime(currentTime);
+                        System.out.printf("[Priority] AGING P%d: priority %d -> %d at t=%d%n",
+                                p.getProcessId(), p.getPriority() + 1,
+                                p.getPriority(), currentTime);
+                    }
+                }
+            }
+        }
+    }
+
+
     public List<GanttEntry> getGantt() { 
         return gantt; 
     }

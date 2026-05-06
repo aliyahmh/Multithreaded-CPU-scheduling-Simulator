@@ -1,4 +1,4 @@
-package CSC227project;
+//package CSC227project;
 
 /**
  * Manages the main memory of the system.
