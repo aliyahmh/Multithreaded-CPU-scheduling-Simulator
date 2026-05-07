@@ -1,0 +1,112 @@
+package cpu.scheduler;
+
+import java.util.List;
+
+/**
+ * ScheduleResult
+ *
+ * This class is ONLY a container for results.
+ * It does NOT perform scheduling.
+ *
+ * The Scheduler creates an object of this class
+ * after finishing execution of an algorithm
+ * (SJF, Round Robin, or Priority Scheduling).
+ *
+ * Main then receives this object and uses it
+ * to print:
+ *  - Gantt Chart
+ *  - Process Table
+ *  - Average Waiting Time
+ *  - Average Turnaround Time
+ *  - Starvation Report (Priority only)
+ */
+public class ScheduleResult {
+
+    // =========================================================
+    // List of all processes AFTER execution finishes
+    // Each Process object now contains:
+    // - start time
+    // - termination time
+    // - waiting time
+    // - turnaround time
+    // - final priority (after aging if applied)
+    private List<Process> processes;
+
+    // Stores the full Gantt Chart
+  
+    private List<GanttEntry> ganttChart;
+
+
+    // Average Waiting Time
+ 
+    // Formula: total waiting time / number of processes
+    private double averageWaitingTime;
+
+
+    // Average Turnaround Time
+  
+    // Formula: total turnaround time / number of processes
+    // =========================================================
+    private double averageTurnaroundTime;
+
+
+    // =========================================================
+    // List of processes that suffered from starvation
+        // Used ONLY in Priority Scheduling
+    // For: SJF-Round Robin this list will be empty.
+    private List<Process> starvedProcesses;
+
+
+ 
+    public ScheduleResult(List<Process> processes,
+                          List<GanttEntry> ganttChart,
+                          double averageWaitingTime,
+                          double averageTurnaroundTime,
+                          List<Process> starvedProcesses) {
+
+        // Save all executed processes
+        this.processes = processes;
+
+        // Save the Gantt Chart entries
+        this.ganttChart = ganttChart;
+
+        // Save average waiting time
+        this.averageWaitingTime = averageWaitingTime;
+
+        // Save average turnaround time
+        this.averageTurnaroundTime = averageTurnaroundTime;
+
+        // Save starved processes list
+        this.starvedProcesses = starvedProcesses;
+    }
+
+
+
+    public List<Process> getProcesses() {
+        return processes;
+    }
+
+
+    
+    public List<GanttEntry> getGanttChart() {
+        return ganttChart;
+    }
+
+
+   
+    public double getAverageWaitingTime() {
+        return averageWaitingTime;
+    }
+
+
+ 
+    public double getAverageTurnaroundTime() {
+        return averageTurnaroundTime;
+    }
+
+
+
+    public List<Process> getStarvedProcesses() {
+        return starvedProcesses;
+    }
+}
