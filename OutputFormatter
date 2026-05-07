@@ -1,0 +1,66 @@
+
+import java.util.List;
+
+public class OutputFormatter {
+
+    public static void printGanttChart(List<GanttEntry> ganttChart) {
+        System.out.println("\n========== Gantt Chart ==========");
+        
+        System.out.print("|");
+        for (int i = 0; i < ganttChart.size(); i++) {
+            System.out.printf("  P%-2d |", ganttChart.get(i).getProcessId());
+        }
+        System.out.println();
+
+      
+        System.out.println();
+
+        System.out.print(ganttChart.get(0).getStartTime());
+        for (int i = 0; i < ganttChart.size(); i++) {
+            System.out.printf("%6d", ganttChart.get(i).getEndTime());
+        }
+        System.out.println("\n");
+    }
+
+    public static void printTable(List<Process> processes) {
+        System.out.println("========== Process Table ==========");
+        System.out.println("+-----+---------+---------+-------------+---------+-----------+");
+        System.out.println("| PID |  Burst  |  Start  | Termination | Waiting | Turnaround|");
+        System.out.println("+-----+---------+---------+-------------+---------+-----------+");
+
+        for (int i = 0; i < processes.size(); i++) {
+            Process p = processes.get(i);
+            System.out.printf("| P%-2d |   %-5d |   %-5d |     %-7d |   %-5d |    %-6d |%n",
+                    p.getProcessId(),
+                    p.getBurstTime(),
+                    p.getStartTime(),
+                    p.getTerminationTime(),
+                    p.getWaitingTime(),
+                    p.getTurnaroundTime());
+        }
+        System.out.println("+-----+---------+---------+-------------+---------+-----------+\n");
+    }
+
+    public static void printMetrics(ScheduleResult result) {
+        System.out.println("========== Performance Metrics ==========");
+        System.out.printf("  Average Waiting Time    : %.2f ms%n", result.getAverageWaitingTime());
+        System.out.printf("  Average Turnaround Time : %.2f ms%n", result.getAverageTurnaroundTime());
+        System.out.println("=========================================\n");
+    }
+
+    public static void printStarvation(List<Process> starvedProcesses) {
+        System.out.println("========== Starvation Report ==========");
+        if (starvedProcesses.isEmpty()) {
+            System.out.println("  No processes suffered from starvation.");
+        } else {
+            for (int i = 0; i < starvedProcesses.size(); i++) {
+                Process p = starvedProcesses.get(i);
+                System.out.printf("  P%d suffered starvation | Original Priority: %d -> Final Priority: %d%n",
+                        p.getProcessId(),
+                        p.getOriginalPriority(),
+                        p.getPriority());
+            }
+        }
+        System.out.println("=======================================\n");
+    }
+}
