@@ -1,138 +1,124 @@
 //package CSC227project;
 
-import java.util.concurrent.BlockingQueue;
-	import java.util.concurrent.TimeUnit;
+
+
+
+	import java.io.BufferedReader;
+	import java.io.FileNotFoundException;
+	import java.io.FileReader;
+	import java.io.IOException;
+	import java.util.concurrent.BlockingQueue;
 
 	/**
-	 * Thread 2 - Job Loader
-	 * Moves processes from the Job Queue to the Ready Queue.
-	 * Checks available memory before admitting each process.
-	 * Also releases memory when a process finishes execution.
-	 *
-	 
-	 * Shares jobQueue and readyQueue with other threads — synchronized
-	 * access handled by BlockingQueue 
-	 *
-	 * Terminates after all processes have been admitted AND completed.
+	 * Thread 1 - Job Reader
+	 * 
+	 * Reads process information from job.txt, creates Process objects,
+	 * and adds them to the Job Queue.
+	 * 
+	 * 
+	 * 
+	 * Terminates automatically after all jobs are read from the file.
 	 */
-	public class JobLoaderThread extends Thread {
+	public class JobReaderThread extends Thread {
 
+	    private final String filePath;
 	    private final BlockingQueue<Process> jobQueue;
-	    private final BlockingQueue<Process> readyQueue;
-	    private final MemoryManager memoryManager;
-	    private final int totalProcesses;
 
-	    // Tracks how many processes have fully finished (updated by scheduler)
-	    private volatile int completedProcesses = 0;
-
-	    /**
-	     * Constructor
-	     * @param jobQueue        shared queue from Thread 1
-	     * @param readyQueue      shared queue to the scheduler (Main Thread)
-	     * @param memoryManager   shared memory tracker
-	     * @param totalProcesses  total number of processes in the system
-	     */
-	    public JobLoaderThread(BlockingQueue<Process> jobQueue,
-	                             BlockingQueue<Process> readyQueue,
-	                             MemoryManager memoryManager,
-	                             int totalProcesses) {
-	        this.jobQueue       = jobQueue;
-	        this.readyQueue     = readyQueue;
-	        this.memoryManager  = memoryManager;
-	        this.totalProcesses = totalProcesses;
+	    
+	    public JobReaderThread(String filePath, BlockingQueue<Process> jobQueue) {
+	        this.filePath = filePath;
+	        this.jobQueue = jobQueue;
 	    }
 
 	    /**
-	     * Thread 2 execution logic.
-	     * Continuously pulls from the Job Queue and admits processes
-	     * to the Ready Queue if enough memory is available.
+	     * Thread 1 execution logic.
+	     * Reads job.txt line by line, parses each line into a Process,
+	     * and puts it into the job queue.
 	     */
 	    @Override
 	    public void run() {
-	        System.out.println("[Thread 2 - JobAdmitter] Started.");
+	        System.out.println("[Thread 1 - JobReader] Started.");
 
-	        int admittedCount = 0;
+	        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
 
-	        while (admittedCount < totalProcesses) {
+	            String line;
+	            int arrivalOrder = 0; // used for tie-breaking in scheduling
 
-	            try {
-	                // Wait up to 100ms for a job to appear in the queue
-	                Process process = jobQueue.poll(100, TimeUnit.MILLISECONDS);
+	            while ((line = reader.readLine()) != null) {
+	                line = line.trim();
 
-	                if (process == null) {
-	                    // No job available yet — Thread 1 may still be reading
-	                    continue;
+	                // Skip empty lines
+	                if (line.isEmpty()) continue;
+
+	                Process process = parseLine(line, arrivalOrder);
+
+	                if (process != null) {
+	                    jobQueue.put(process); // blocks if queue full (thread-safe)
+	                    System.out.println("[Thread 1 - JobReader] Added to Job Queue: "
+	                        + "PID=" + process.getProcessId()
+	                        + " | Burst=" + process.getBurstTime()
+	                        + " | Priority=" + process.getPriority()
+	                        + " | Memory=" + process.getMemoryRequired() + "MB");
+	                    arrivalOrder++;
 	                }
-
-	                // Keep trying until memory is available for this process
-	                boolean admitted = false;
-	                while (!admitted) {
-
-	                    admitted = memoryManager.allocate(process.getMemoryRequired());
-
-	                    if (!admitted) {
-	                        System.out.println("[Thread 2 - JobAdmitter] Waiting for memory... "
-	                            + "Need " + process.getMemoryRequired()
-	                            + " MB for Process " + process.getProcessId());
-
-	                        // Wait 10ms before retrying (another process may finish)
-	                        Thread.sleep(10);
-	                    }
-	                }
-
-	                // Memory allocated — move process to Ready Queue
-	                process.setState("ready");
-	                readyQueue.put(process);
-	                admittedCount++;
-
-	                System.out.println("[Thread 2 - JobAdmitter] Process "
-	                    + process.getProcessId()
-	                    + " admitted to Ready Queue. ("
-	                    + admittedCount + "/" + totalProcesses + ")");
-
-	            } catch (InterruptedException e) {
-	                // Deferred cancellation 
-	                Thread.currentThread().interrupt();
-	                System.err.println("[Thread 2 - JobAdmitter] Interrupted.");
-	                break;
 	            }
+
+	        } catch (FileNotFoundException e) {
+	            System.err.println("[Thread 1 - JobReader] ERROR: File not found -> " + filePath);
+	        } catch (IOException e) {
+	            System.err.println("[Thread 1 - JobReader] ERROR reading file: " + e.getMessage());
+	        } catch (InterruptedException e) {
+	            // Deferred cancellation - as taught in Chapter 4 slide 48
+	            Thread.currentThread().interrupt();
+	            System.err.println("[Thread 1 - JobReader] Interrupted while adding to queue.");
 	        }
 
-	        // Wait until all admitted processes finish before this thread terminates
-	        System.out.println("[Thread 2 - JobAdmitter] All jobs admitted. "
-	            + "Waiting for executions to complete...");
+	        System.out.println("[Thread 1 - JobReader] Finished. All jobs added to Job Queue.");
+	    }
 
-	        while (completedProcesses < totalProcesses) {
-	            try {
-	                Thread.sleep(10);
-	            } catch (InterruptedException e) {
-	                Thread.currentThread().interrupt();
-	                break;
+	    
+	    private Process parseLine(String line, int arrivalOrder) {
+	        try {
+	            // Split on ";" to separate memory from the rest
+	            String[] mainParts = line.split(";");
+	            if (mainParts.length != 2) {
+	                System.err.println("[Thread 1 - JobReader] Bad format (missing ';'): " + line);
+	                return null;
 	            }
+
+	            int memoryRequired = Integer.parseInt(mainParts[1].trim());
+
+	            // Split the left side on ":" to get ID, burst, priority
+	            String[] coreParts = mainParts[0].split(":");
+	            if (coreParts.length != 3) {
+	                System.err.println("[Thread 1 - JobReader] Bad format (missing ':'): " + line);
+	                return null;
+	            }
+
+	            int processID = Integer.parseInt(coreParts[0].trim());
+	            int burstTime = Integer.parseInt(coreParts[1].trim());
+	            int priority  = Integer.parseInt(coreParts[2].trim());
+
+	            // Validate priority range: must be 1-30 as per project spec
+	            if (priority < 1 || priority > 30) {
+	                System.err.println("[Thread 1 - JobReader] Priority out of range (1-30): " + line);
+	                return null;
+	            }
+
+	            // Validate memory: single process cannot exceed total system memory
+	            if (memoryRequired > 2048) {
+	                System.err.println("[Thread 1 - JobReader] Process " + processID
+	                    + " requires more than total memory (2048 MB). Skipping.");
+	                return null;
+	            }
+
+	            return new Process(processID, burstTime, priority, memoryRequired, arrivalOrder);
+
+	        } catch (NumberFormatException e) {
+	            System.err.println("[Thread 1 - JobReader] Parse error on line: " + line);
+	            return null;
 	        }
-
 	    }
+	}
 
-	    /**
-	     * Called by the Main Thread (scheduler) when a process finishes.
-	     * Releases its memory and increments the completion counter.
-	     *
-	     */
-	    public synchronized void notifyProcessCompleted(Process process) {
-	        memoryManager.release(process.getMemoryRequired());
-	        completedProcesses++;
-	        System.out.println("[Thread 2 - JobAdmitter] Process "
-	            + process.getProcessId()
-	            + " completed. Memory freed. ("
-	            + completedProcesses + "/" + totalProcesses + " done)");
-	    }
 
-	    // Getter so Main can pass this thread to schedulers
-	    public int getTotalProcesses() {
-	        return totalProcesses;
-	    }
-	
-
-}
-}
-}
