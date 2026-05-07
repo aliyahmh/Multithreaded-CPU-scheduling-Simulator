@@ -1,0 +1,107 @@
+
+import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+public class Main {
+
+    static final int QUANTUM      = 5;
+    static final int MEMORY_LIMIT = 2048;
+    static int currentTime = 0;
+
+    static BlockingQueue<Process> jobQueue   = new LinkedBlockingQueue<>();
+    static BlockingQueue<Process> readyQueue = new LinkedBlockingQueue<>();
+
+    public static void main(String[] args) throws InterruptedException {
+
+        System.out.println("+==================================+");
+        System.out.println("|    CPU Scheduling Simulator      |");
+        System.out.println("+==================================+");
+
+        JobReaderThread t1 = new JobReaderThread("job.txt", jobQueue);
+        t1.start();
+        t1.join();
+
+        MemoryManager memoryManager = new MemoryManager();
+        int totalProcesses = jobQueue.size();
+        JobLoaderThread t2 = new JobLoaderThread(jobQueue, readyQueue,
+                                                  memoryManager, totalProcesses);
+        t2.start();
+        Thread.sleep(500);
+
+        Scanner sc = new Scanner(System.in);
+        boolean runAgain = true;
+
+        while (runAgain) {
+
+            System.out.println("\n+==================================+");
+            System.out.println(  "|   Choose Scheduling Algorithm    |");
+            System.out.println(  "+----------------------------------+");
+            System.out.println(  "|  1 - Shortest Job First (SJF)    |");
+            System.out.println(  "|  2 - Round Robin (RR)            |");
+            System.out.println(  "|  3 - Priority Scheduling         |");
+            System.out.println(  "+==================================+");
+            System.out.print("Your choice: ");
+
+            int choice = 0;
+            while (choice < 1 || choice > 3) {
+                try {
+                    choice = Integer.parseInt(sc.nextLine().trim());
+                    if (choice < 1 || choice > 3) {
+                        System.out.print("Invalid! Enter 1, 2, or 3: ");
+                    }
+                } catch (NumberFormatException e) {
+                    System.out.print("Invalid! Enter 1, 2, or 3: ");
+                }
+            }
+
+            BlockingQueue<Process> freshQueue = new LinkedBlockingQueue<>();
+            for (int i = 0; i < readyQueue.size(); i++) {
+                Process[] arr = readyQueue.toArray(new Process[0]);
+                Process p = arr[i];
+                Process fresh = new Process(
+                    p.getProcessId(),
+                    p.getBurstTime(),
+                    p.getOriginalPriority(),
+                    p.getMemoryRequired(),
+                    p.getArrivalOrder()
+                );
+                freshQueue.add(fresh);
+            }            Schedule scheduler = new Schedule(freshQueue, t2);
+            ScheduleResult result;
+
+            switch (choice) {
+                case 1:
+                    result = scheduler.shortestJobFirst();
+                    break;
+                case 2:
+                    result = scheduler.roundRobin();
+                    break;
+                case 3:
+                    result = scheduler.priorityScheduling();
+                    break;
+                default:
+                    System.out.println("Invalid choice!");
+                    return;
+            }
+
+            OutputFormatter.printGanttChart(result.getGanttChart());
+            OutputFormatter.printTable(result.getProcesses());
+            OutputFormatter.printMetrics(result);
+
+            if (choice == 3) {
+                OutputFormatter.printStarvation(result.getStarvedProcesses());
+            }
+
+            System.out.print("\nTry another algorithm? (yes/no): ");
+            String again = sc.nextLine().trim().toLowerCase();
+            runAgain = again.equals("yes");
+        }
+
+        System.out.println("\n+==================================+");
+        System.out.println(  "|        Thank you! Goodbye!       |");
+        System.out.println(  "+==================================+");
+
+        sc.close();
+    }
+}
