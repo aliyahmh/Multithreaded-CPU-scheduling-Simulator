@@ -1,33 +1,44 @@
+package cpu.scheduler;
 
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class Main {
+    // System constants: time quantum for Round Robin and total memory limit
 
-    static final int QUANTUM      = 5;
-    static final int MEMORY_LIMIT = 2048;
-    static int currentTime = 0;
+    public static final int QUANTUM      = 5;
+    public static final int MEMORY_LIMIT = 2048;
+    public static int currentTime = 0;
+    // Shared queues between threads
 
-    static BlockingQueue<Process> jobQueue   = new LinkedBlockingQueue<>();
-    static BlockingQueue<Process> readyQueue = new LinkedBlockingQueue<>();
+    public  static BlockingQueue<Process> jobQueue   = new LinkedBlockingQueue<>();
+    public  static BlockingQueue<Process> readyQueue = new LinkedBlockingQueue<>();
 
     public static void main(String[] args) throws InterruptedException {
 
         System.out.println("+==================================+");
         System.out.println("|    CPU Scheduling Simulator      |");
         System.out.println("+==================================+");
+        // Thread 1: reads job.txt and fills the job queue
 
         JobReaderThread t1 = new JobReaderThread("job.txt", jobQueue);
         t1.start();
-        t1.join();
+        t1.join(); // wait for Thread 1 to finish before continuing
+
+        
+        // Thread 2: loads jobs from job queue to ready queue based on available memory
 
         MemoryManager memoryManager = new MemoryManager();
         int totalProcesses = jobQueue.size();
         JobLoaderThread t2 = new JobLoaderThread(jobQueue, readyQueue,
                                                   memoryManager, totalProcesses);
         t2.start();
-        Thread.sleep(500);
+        // Wait until all processes are admitted to the ready queue
+
+        while (readyQueue.size() < totalProcesses) {
+            Thread.sleep(10);
+        }
 
         Scanner sc = new Scanner(System.in);
         boolean runAgain = true;
@@ -42,7 +53,7 @@ public class Main {
             System.out.println(  "|  3 - Priority Scheduling         |");
             System.out.println(  "+==================================+");
             System.out.print("Your choice: ");
-
+            // Validate user input: must be 1, 2, or 3
             int choice = 0;
             while (choice < 1 || choice > 3) {
                 try {
@@ -54,11 +65,12 @@ public class Main {
                     System.out.print("Invalid! Enter 1, 2, or 3: ");
                 }
             }
+            // Create fresh copies of all processes so each algorithm starts with clean state
 
+            Process[] snapshot = readyQueue.toArray(new Process[0]);
             BlockingQueue<Process> freshQueue = new LinkedBlockingQueue<>();
-            for (int i = 0; i < readyQueue.size(); i++) {
-                Process[] arr = readyQueue.toArray(new Process[0]);
-                Process p = arr[i];
+            for (int i = 0; i < snapshot.length; i++) {
+                Process p = snapshot[i];
                 Process fresh = new Process(
                     p.getProcessId(),
                     p.getBurstTime(),
@@ -67,7 +79,7 @@ public class Main {
                     p.getArrivalOrder()
                 );
                 freshQueue.add(fresh);
-            }            Schedule scheduler = new Schedule(freshQueue, t2);
+            }      Schedule scheduler = new Schedule(freshQueue, t2);
             ScheduleResult result;
 
             switch (choice) {
@@ -84,10 +96,14 @@ public class Main {
                     System.out.println("Invalid choice!");
                     return;
             }
+            // Print results: Gantt chart, process table, and performance metrics
 
             OutputFormatter.printGanttChart(result.getGanttChart());
             OutputFormatter.printTable(result.getProcesses());
             OutputFormatter.printMetrics(result);
+            System.out.println("Available Memory: " + memoryManager.getAvailableMemory() + " MB");
+            // Print starvation report only for Priority Scheduling
+
 
             if (choice == 3) {
                 OutputFormatter.printStarvation(result.getStarvedProcesses());
