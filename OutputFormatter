@@ -1,35 +1,57 @@
+package cpu.scheduler;
 
 import java.util.List;
 
 public class OutputFormatter {
 
-    public static void printGanttChart(List<GanttEntry> ganttChart) {
-        System.out.println("\n========== Gantt Chart ==========");
-        
-        System.out.print("|");
-        for (int i = 0; i < ganttChart.size(); i++) {
-            System.out.printf("  P%-2d |", ganttChart.get(i).getProcessId());
-        }
-        System.out.println();
+	public static void printGanttChart(List<GanttEntry> ganttChart) {
 
-      
-        System.out.println();
+	    // Guard: check if Gantt data is available
+	    if (ganttChart == null || ganttChart.isEmpty()) {
+	        System.out.println("No Gantt data.");
+	        return;
+	    }
 
-        System.out.print(ganttChart.get(0).getStartTime());
-        for (int i = 0; i < ganttChart.size(); i++) {
-            System.out.printf("%6d", ganttChart.get(i).getEndTime());
-        }
-        System.out.println("\n");
-    }
+	    // Print section header
+	    System.out.println("\n========== Gantt Chart ==========");
 
+	    int size = ganttChart.size();
+	    int rowSize = 14; // max entries per row
+
+	    // Print in chunks of 14
+	    for (int start = 0; start < size; start += rowSize) {
+	        int end = Math.min(start + rowSize, size);
+
+	        // Print process boxes for this row
+	        System.out.print("|");
+	        for (int i = start; i < end; i++) {
+	            GanttEntry g = ganttChart.get(i);
+	            System.out.printf(" P%d(%d->%d) |",
+	                    g.getProcessId(),
+	                    g.getBurstAtStart(),
+	                    g.getBurstAtEnd());
+	        }
+	        System.out.println();
+
+	        // Print timeline for this row
+	        System.out.print(ganttChart.get(start).getStartTime());
+	        for (int i = start; i < end; i++) {
+	            System.out.printf("%12d", ganttChart.get(i).getEndTime());
+	        }
+	        System.out.println("\n");
+	    }
+	}
     public static void printTable(List<Process> processes) {
+    	 // Print table header
         System.out.println("========== Process Table ==========");
         System.out.println("+-----+---------+---------+-------------+---------+-----------+");
         System.out.println("| PID |  Burst  |  Start  | Termination | Waiting | Turnaround|");
         System.out.println("+-----+---------+---------+-------------+---------+-----------+");
-
+        // Print one row per process
         for (int i = 0; i < processes.size(); i++) {
             Process p = processes.get(i);
+            // Each column: PID, burst time, start time, termination time, waiting time, turnaround time
+
             System.out.printf("| P%-2d |   %-5d |   %-5d |     %-7d |   %-5d |    %-6d |%n",
                     p.getProcessId(),
                     p.getBurstTime(),
@@ -37,7 +59,7 @@ public class OutputFormatter {
                     p.getTerminationTime(),
                     p.getWaitingTime(),
                     p.getTurnaroundTime());
-        }
+        }    // Print table footer
         System.out.println("+-----+---------+---------+-------------+---------+-----------+\n");
     }
 
@@ -50,9 +72,10 @@ public class OutputFormatter {
 
     public static void printStarvation(List<Process> starvedProcesses) {
         System.out.println("========== Starvation Report ==========");
+        // If no process suffered starvation, print a message and exit
         if (starvedProcesses.isEmpty()) {
             System.out.println("  No processes suffered from starvation.");
-        } else {
+        } else {        // Print each starved process with its original and final priority after aging
             for (int i = 0; i < starvedProcesses.size(); i++) {
                 Process p = starvedProcesses.get(i);
                 System.out.printf("  P%d suffered starvation | Original Priority: %d -> Final Priority: %d%n",
