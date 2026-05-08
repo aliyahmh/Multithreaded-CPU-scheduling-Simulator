@@ -118,7 +118,7 @@
 	     *
 	     */
 	    public synchronized void notifyProcessCompleted(Process process) {
-	    	if (completedProcesses < totalProcesses) {
+	    	
 	    	    memoryManager.release(process.getMemoryRequired());
 	    	    completedProcesses++;
 	    	}
