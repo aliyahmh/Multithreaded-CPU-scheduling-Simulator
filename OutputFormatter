@@ -76,13 +76,12 @@ public class OutputFormatter {
         if (starvedProcesses.isEmpty()) {
             System.out.println("  No processes suffered from starvation.");
         } else {        // Print each starved process with its original and final priority after aging
-            for (int i = 0; i < starvedProcesses.size(); i++) {
+        	for (int i = 0; i < starvedProcesses.size(); i++) {
                 Process p = starvedProcesses.get(i);
-                System.out.printf("  P%d suffered starvation | Original Priority: %d -> Final Priority: %d%n",
-                        p.getProcessId(),
-                        p.getOriginalPriority(),
-                        p.getPriority());
+                System.out.printf("  P%d suffered from starvation%n",
+                        p.getProcessId());
             }
+        
         }
         System.out.println("=======================================\n");
     }
