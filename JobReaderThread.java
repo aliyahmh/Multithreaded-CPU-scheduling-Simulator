@@ -1,7 +1,6 @@
+
+
 package cpu.scheduler;
-
-
-	//package CSC227project;
 
 	import java.io.BufferedReader;
 	import java.io.FileNotFoundException;
@@ -100,13 +99,24 @@ package cpu.scheduler;
 	                return null;
 	            }
 
-	            // Validate memory: single process cannot exceed total system memory
+	            // Validate memory: single process cannot exceed total system memory & cannot be negative
 	            if (memoryRequired > 2048) {
 	                System.err.println("[Thread 1 - JobReader] Process " + processID
 	                    + " requires more than total memory (2048 MB). Skipping.");
 	                return null;
 	            }
+				if (memoryRequired <= 0) {
+					System.err.println("[Thread 1 - JobReader] Memory must be between 1 and 2048 MB: " + line);
+					return null;
+				}
 
+				// Validate Burst time: burst time must be positive
+				if (burstTime <= 0) {
+					System.err.println("[Thread 1 - JobReader] Burst time must be positive: " + line);
+					return null;
+				}
+				
+				
 	            return new Process(processID, burstTime, priority, memoryRequired, arrivalOrder);
 
 	        } catch (NumberFormatException e) {

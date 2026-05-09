@@ -1,7 +1,6 @@
+
+
 package cpu.scheduler;
-
-
-
 	/**
 	 * Manages the main memory of the system.
 	 * Total memory = 2048 MB as specified in the project.
@@ -19,7 +18,7 @@ package cpu.scheduler;
 	    private int availableMemory;
 
 	    public MemoryManager() {
-	        this.availableMemory = Main.MEMORY_LIMIT;
+	        this.availableMemory = main.MEMORY_LIMIT;
 	    }
 
 	    /**

@@ -1,10 +1,12 @@
+
 package cpu.scheduler;
+
 
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class Main {
+public class main {
     // System constants: time quantum for Round Robin and total memory limit
     public static final int QUANTUM      = 5;
     public static final int MEMORY_LIMIT = 2048;

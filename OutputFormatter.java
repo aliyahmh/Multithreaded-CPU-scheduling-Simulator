@@ -41,6 +41,8 @@ public class OutputFormatter {
 	        System.out.println("\n");
 	    }
 	}
+
+    
     public static void printTable(List<Process> processes) {
     	 // Print table header
         System.out.println("========== Process Table ==========");

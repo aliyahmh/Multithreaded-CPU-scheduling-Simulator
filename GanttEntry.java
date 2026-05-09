@@ -1,5 +1,6 @@
+package cpu.scheduler;
+
 public class GanttEntry {
-    public class GanttEntry {
 	
 	    private int processId;
 	    private int startTime;
@@ -46,4 +47,3 @@ public class GanttEntry {
 
 }
 
-}

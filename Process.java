@@ -1,7 +1,6 @@
-//package cpu.scheduler;
 
 
-
+package cpu.scheduler;
 	public class Process {
 	    
 	    // ─── Basic Info ───────────────────────────────
@@ -78,4 +77,3 @@
 	    
 	  
 	    }
-	}

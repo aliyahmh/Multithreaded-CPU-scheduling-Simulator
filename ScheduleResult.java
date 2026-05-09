@@ -1,5 +1,4 @@
 package cpu.scheduler;
-
 import java.util.List;
 
 /**
