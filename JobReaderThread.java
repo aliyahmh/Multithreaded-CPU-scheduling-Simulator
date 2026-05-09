@@ -1,119 +1,119 @@
-//package CSC227project;
+package cpu.scheduler;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.concurrent.BlockingQueue;
 
-/**
- * Thread 1 - Job Reader
- * 
- * Reads process information from job.txt, creates Process objects,
- * and adds them to the Job Queue.
- * 
- * 
- * 
- * Terminates automatically after all jobs are read from the file.
- */
-public class JobReaderThread extends Thread {
+	//package CSC227project;
 
-    private final String filePath;
-    private final BlockingQueue<Process> jobQueue;
+	import java.io.BufferedReader;
+	import java.io.FileNotFoundException;
+	import java.io.FileReader;
+	import java.io.IOException;
+	import java.util.concurrent.BlockingQueue;
 
-    
-    public JobReaderThread(String filePath, BlockingQueue<Process> jobQueue) {
-        this.filePath = filePath;
-        this.jobQueue = jobQueue;
-    }
+	/**
+	 * Thread 1 - Job Reader
+	 * 
+	 * Reads process information from job.txt, creates Process objects,
+	 * and adds them to the Job Queue.
+	 * 
+	 * 
+	 * 
+	 * Terminates automatically after all jobs are read from the file.
+	 */
+	public class JobReaderThread extends Thread {
 
-    /**
-     * Thread 1 execution logic.
-     * Reads job.txt line by line, parses each line into a Process,
-     * and puts it into the job queue.
-     */
-    @Override
-    public void run() {
-        System.out.println("[Thread 1 - JobReader] Started.");
+	    private final String filePath;
+	    private final BlockingQueue<Process> jobQueue;
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+	    
+	    public JobReaderThread(String filePath, BlockingQueue<Process> jobQueue) {
+	        this.filePath = filePath;
+	        this.jobQueue = jobQueue;
+	    }
 
-            String line;
-            int arrivalOrder = 0; // used for tie-breaking in scheduling
+	    /**
+	     * Thread 1 execution logic.
+	     * Reads job.txt line by line, parses each line into a Process,
+	     * and puts it into the job queue.
+	     */
+	    @Override
+	    public void run() {
+	       
 
-            while ((line = reader.readLine()) != null) {
-                line = line.trim();
+	        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
 
-                // Skip empty lines
-                if (line.isEmpty()) continue;
+	            String line;
+	            int arrivalOrder = 0; // used for tie-breaking in scheduling
 
-                Process process = parseLine(line, arrivalOrder);
+	            while ((line = reader.readLine()) != null) {
+	                line = line.trim();
 
-                if (process != null) {
-                    jobQueue.put(process); // blocks if queue full (thread-safe)
-                    System.out.println("[Thread 1 - JobReader] Added to Job Queue: "
-                        + "PID=" + process.getProcessID()
-                        + " | Burst=" + process.getBurstTime()
-                        + " | Priority=" + process.getPriority()
-                        + " | Memory=" + process.getMemoryRequired() + "MB");
-                    arrivalOrder++;
-                }
-            }
+	                // Skip empty lines
+	                if (line.isEmpty()) continue;
 
-        } catch (FileNotFoundException e) {
-            System.err.println("[Thread 1 - JobReader] ERROR: File not found -> " + filePath);
-        } catch (IOException e) {
-            System.err.println("[Thread 1 - JobReader] ERROR reading file: " + e.getMessage());
-        } catch (InterruptedException e) {
-            // Deferred cancellation - as taught in Chapter 4 slide 48
-            Thread.currentThread().interrupt();
-            System.err.println("[Thread 1 - JobReader] Interrupted while adding to queue.");
-        }
+	                Process process = parseLine(line, arrivalOrder);
 
-        System.out.println("[Thread 1 - JobReader] Finished. All jobs added to Job Queue.");
-    }
+	                if (process != null) {
+	                    jobQueue.put(process); // blocks if queue full (thread-safe)
+	                    
+	                    arrivalOrder++;
+	                }
+	            }
 
-    
-    private Process parseLine(String line, int arrivalOrder) {
-        try {
-            // Split on ";" to separate memory from the rest
-            String[] mainParts = line.split(";");
-            if (mainParts.length != 2) {
-                System.err.println("[Thread 1 - JobReader] Bad format (missing ';'): " + line);
-                return null;
-            }
+	        } catch (FileNotFoundException e) {
+	            System.err.println("[Thread 1 - JobReader] ERROR: File not found -> " + filePath);
+	        } catch (IOException e) {
+	            System.err.println("[Thread 1 - JobReader] ERROR reading file: " + e.getMessage());
+	        } catch (InterruptedException e) {
+	            // Deferred cancellation - as taught in Chapter 4 slide 48
+	            Thread.currentThread().interrupt();
+	            System.err.println("[Thread 1 - JobReader] Interrupted while adding to queue.");
+	        }
+	      ;
+	    }
 
-            int memoryRequired = Integer.parseInt(mainParts[1].trim());
+	    
+	    private Process parseLine(String line, int arrivalOrder) {
+	        try {
+	            // Split on ";" to separate memory from the rest
+	            String[] mainParts = line.split(";");
+	            if (mainParts.length != 2) {
+	                System.err.println("[Thread 1 - JobReader] Bad format (missing ';'): " + line);
+	                return null;
+	            }
 
-            // Split the left side on ":" to get ID, burst, priority
-            String[] coreParts = mainParts[0].split(":");
-            if (coreParts.length != 3) {
-                System.err.println("[Thread 1 - JobReader] Bad format (missing ':'): " + line);
-                return null;
-            }
+	            int memoryRequired = Integer.parseInt(mainParts[1].trim());
 
-            int processID = Integer.parseInt(coreParts[0].trim());
-            int burstTime = Integer.parseInt(coreParts[1].trim());
-            int priority  = Integer.parseInt(coreParts[2].trim());
+	            // Split the left side on ":" to get ID, burst, priority
+	            String[] coreParts = mainParts[0].split(":");
+	            if (coreParts.length != 3) {
+	                System.err.println("[Thread 1 - JobReader] Bad format (missing ':'): " + line);
+	                return null;
+	            }
 
-            // Validate priority range: must be 1-30 as per project spec
-            if (priority < 1 || priority > 30) {
-                System.err.println("[Thread 1 - JobReader] Priority out of range (1-30): " + line);
-                return null;
-            }
+	            int processID = Integer.parseInt(coreParts[0].trim());
+	            int burstTime = Integer.parseInt(coreParts[1].trim());
+	            int priority  = Integer.parseInt(coreParts[2].trim());
 
-            // Validate memory: single process cannot exceed total system memory
-            if (memoryRequired > 2048) {
-                System.err.println("[Thread 1 - JobReader] Process " + processID
-                    + " requires more than total memory (2048 MB). Skipping.");
-                return null;
-            }
+	            // Validate priority range: must be 1-30 as per project spec
+	            if (priority < 1 || priority > 30) {
+	                System.err.println("[Thread 1 - JobReader] Priority out of range (1-30): " + line);
+	                return null;
+	            }
 
-            return new Process(processID, burstTime, priority, memoryRequired, arrivalOrder);
+	            // Validate memory: single process cannot exceed total system memory
+	            if (memoryRequired > 2048) {
+	                System.err.println("[Thread 1 - JobReader] Process " + processID
+	                    + " requires more than total memory (2048 MB). Skipping.");
+	                return null;
+	            }
 
-        } catch (NumberFormatException e) {
-            System.err.println("[Thread 1 - JobReader] Parse error on line: " + line);
-            return null;
-        }
-    }
-}
+	            return new Process(processID, burstTime, priority, memoryRequired, arrivalOrder);
+
+	        } catch (NumberFormatException e) {
+	            System.err.println("[Thread 1 - JobReader] Parse error on line: " + line);
+	            return null;
+	        }
+	    }
+	}
+
+
