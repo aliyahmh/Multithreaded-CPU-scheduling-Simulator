@@ -1,5 +1,5 @@
 
-
+package cpu.scheduler;
 
 
 
@@ -118,10 +118,10 @@
 	     *
 	     */
 	    public synchronized void notifyProcessCompleted(Process process) {
-	    	
+	    
 	    	    memoryManager.release(process.getMemoryRequired());
 	    	    completedProcesses++;
-	    	}
+	    
 	       
 	    }
 
