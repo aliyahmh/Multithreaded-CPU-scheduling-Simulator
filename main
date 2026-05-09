@@ -9,13 +9,23 @@ public class Main {
     public static final int QUANTUM      = 5;
     public static final int MEMORY_LIMIT = 2048;
     public static int currentTime = 0;
-
+ // Store original processes after reading job.txt 
+    private static Process[] originalProcesses;
     public static void main(String[] args) throws InterruptedException {
 
         System.out.println("+==================================+");
         System.out.println("|    CPU Scheduling Simulator      |");
         System.out.println("+==================================+");
         Scanner input = new Scanner(System.in);
+     // Read job.txt 
+        BlockingQueue<Process> originalJobQueue = new LinkedBlockingQueue<>();
+        JobReaderThread t1 = new JobReaderThread("job.txt", originalJobQueue);
+        t1.start();
+        t1.join();
+
+        originalProcesses = originalJobQueue.toArray(new Process[0]);
+
+      
      // Main loop: keeps running until user chooses to exit
         while (true) {
 
@@ -52,10 +62,14 @@ public class Main {
             ScheduleResult result;
 
             switch (choice) {
-                case 1: result = scheduler.shortestJobFirst();   break;
-                case 2: result = scheduler.roundRobin();         break;
-                case 3: result = scheduler.priorityScheduling(); break;
-                default: System.out.println("Invalid choice!"); return;
+                case 1: result = scheduler.shortestJobFirst();   
+                break;
+                case 2: result = scheduler.roundRobin();      
+                break;
+                case 3: result = scheduler.priorityScheduling(); 
+                break;
+                default: System.out.println("Invalid choice!"); 
+                return;
             }
 
             // Print results: Gantt chart, process table, and performance metrics
@@ -69,35 +83,41 @@ public class Main {
         }
     }
 
-    // Prepares a fresh scheduler for each algorithm run
-    // Creates new queues, memory manager, and threads for every run
+  
     private static Schedule prepareScheduler() throws InterruptedException {
-        BlockingQueue<Process> jobQueue   = new LinkedBlockingQueue<>();
+        BlockingQueue<Process> jobQueue = new LinkedBlockingQueue<>();
         BlockingQueue<Process> readyQueue = new LinkedBlockingQueue<>();
 
-        // Fresh memory manager — starts with 2048 MB every run
+        for (Process p : originalProcesses) {
+            Process fresh = new Process(
+                    p.getProcessId(),
+                    p.getBurstTime(),
+                    p.getOriginalPriority(),
+                    p.getMemoryRequired(),
+                    p.getArrivalOrder()
+            );
+
+            jobQueue.add(fresh);
+        }
+
         MemoryManager memoryManager = new MemoryManager();
         System.out.println("Memory Check Start: " + memoryManager.getAvailableMemory() + " MB");
 
-        // Thread 1: reads job.txt and fills the job queue
-        JobReaderThread t1 = new JobReaderThread("job.txt", jobQueue);
-        t1.start();
-        t1.join();
-
         int totalProcesses = jobQueue.size();
 
-        // Thread 2: loads jobs from job queue to ready queue based on available memory
-        JobLoaderThread t2 = new JobLoaderThread(jobQueue, readyQueue, memoryManager, totalProcesses);
-        t2.start();
+        JobLoaderThread t2 = new JobLoaderThread(
+                jobQueue,
+                readyQueue,
+                memoryManager,
+                totalProcesses
+        );
 
-        // Wait until all processes are admitted to the ready queue
-        while (readyQueue.isEmpty()) {
-            Thread.sleep(10);
-        }
+        t2.start();
+        
         return new Schedule(readyQueue, t2);
     }
 }
-        
+
         
         
         
