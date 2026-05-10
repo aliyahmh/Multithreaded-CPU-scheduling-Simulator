@@ -1,4 +1,5 @@
 package cpu.scheduler;
+//package CSC227project;
 
 
 import java.util.*;
@@ -45,6 +46,20 @@ import java.util.*;
             try {
                 Process p = readyQueue.take(); // wait until loader admits one
                 queue.add(p);
+                
+                if (!allProcesses.contains(p)) {
+                    allProcesses.add(p);
+                }
+
+                // drain any others already waiting
+                List<Process> rest = new ArrayList<>();
+                readyQueue.drainTo(rest);
+                for (Process r : rest) {
+                    queue.add(r);
+                    if (!allProcesses.contains(r)) {
+                        allProcesses.add(r);
+                    }
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
@@ -88,6 +103,8 @@ import java.util.*;
         toRun.setState("terminated");
         toRun.setTerminationTime(currentTime);
         toRun.setTurnaroundTime(currentTime);
+        toRun.setWaitingTime(currentTime - toRun.getBurstTime());    // WT = TAT - Burst
+
 
         entry.setEndTime(currentTime);
         entry.setBurstAtEnd(0);
@@ -249,6 +266,18 @@ import java.util.*;
 						if (!allProcesses.contains(p)) {
 							allProcesses.add(p);
 						}
+						
+						//drain any others that are already waiting
+				        List<Process> rest = new ArrayList<>();
+				        readyQueue.drainTo(rest);
+				        for (Process r : rest) {
+				            r.setLastReadyTime(currentTime);
+				            r.setLastAgedTime(currentTime);
+				            queue.add(r);
+				            if (!allProcesses.contains(r)) {
+				                allProcesses.add(r);
+				            }
+				        }
 		
 					} catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
@@ -313,6 +342,7 @@ import java.util.*;
 				toRun.setState("terminated");
 				toRun.setTerminationTime(currentTime);
 				toRun.setTurnaroundTime(currentTime);
+				toRun.setWaitingTime(currentTime - toRun.getBurstTime());
 		
 				entry.setEndTime(currentTime);
 				entry.setBurstAtEnd(0);
@@ -388,5 +418,3 @@ import java.util.*;
 	        return currentTime; 
 	    }
 	}
-
-
