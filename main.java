@@ -115,6 +115,7 @@ public class main {
         );
 
         t2.start();
+        Thread.sleep(300); // Give Thread 2 time to load processes before showing menu
         
         return new Schedule(readyQueue, t2);
     }
