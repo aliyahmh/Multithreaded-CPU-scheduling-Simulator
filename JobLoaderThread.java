@@ -1,7 +1,9 @@
+//package CSC227project;
 
 package cpu.scheduler;
 
-
+	import java.util.ArrayList;
+	import java.util.List;
 	import java.util.concurrent.BlockingQueue;
 	import java.util.concurrent.TimeUnit;
 
@@ -51,64 +53,72 @@ package cpu.scheduler;
 	     */
 	    @Override
 	    public void run() {
-	      
 
+	        // Use a waiting list for processes that don't fit in memory yet
+	        List<Process> waitingList = new ArrayList<>();
 	        int admittedCount = 0;
 
 	        while (admittedCount < totalProcesses) {
-
 	            try {
-	                // Wait up to 100ms for a job to appear in the queue
+	                // Pull from job queue if available
 	                Process process = jobQueue.poll(100, TimeUnit.MILLISECONDS);
 
-	                if (process == null) {
-	                    // No job available yet — Thread 1 may still be reading
-	                    continue;
+	                if (process != null) {
+	                    waitingList.add(process);
 	                }
 
-	                // Keep trying until memory is available for this process
-	                boolean admitted = false;
-	                while (!admitted) {
+	                // Try to admit everything in the waiting list
+	                List<Process> toRemove = new ArrayList<>();
 
-	                    admitted = memoryManager.allocate(process.getMemoryRequired());
-
-	                    if (!admitted) {
-	                        System.out.println("[Thread 2 - JobAdmitter] Waiting for memory... "
-	                            + "Need " + process.getMemoryRequired()
-	                            + " MB for Process " + process.getProcessId());
-
-	                        // Wait 10ms before retrying (another process may finish)
-	                        Thread.sleep(10);
+	                for (Process p : waitingList) {
+	                    if (memoryManager.allocate(p.getMemoryRequired())) {
+	                        p.setState("ready");
+	                        readyQueue.put(p);
+	                        toRemove.add(p);
+	                        admittedCount++;
+	                        System.out.println("[Thread 2 - JobLoader] Process "
+	                            + p.getProcessId()
+	                            + " admitted to Ready Queue. ("
+	                            + admittedCount + "/" + totalProcesses + ")");
+	                    } else {
+	                        System.out.println("[Thread 2 - JobLoader] Process "
+	                            + p.getProcessId()
+	                            + " waiting for memory ("
+	                            + p.getMemoryRequired() + " MB needed, "
+	                            + memoryManager.getAvailableMemory() + " MB available)");
 	                    }
 	                }
 
-	                // Memory allocated — move process to Ready Queue
-	                process.setState("ready");
-	                readyQueue.put(process);
-	                admittedCount++;
-
-	             
+	                waitingList.removeAll(toRemove);
 
 	            } catch (InterruptedException e) {
-	                // Deferred cancellation 
 	                Thread.currentThread().interrupt();
-	                System.err.println("[Thread 2 - JobAdmitter] Interrupted.");
+	                System.err.println("[Thread 2 - JobLoader] Interrupted.");
 	                break;
 	            }
 	        }
 
-	        // Wait until all admitted processes finish before this thread terminates
-	       
-
+	        // Wait until all processes finish execution
 	        while (completedProcesses < totalProcesses) {
 	            try {
+	                // Retry waiting list — memory may have freed up
+	                List<Process> toRemove = new ArrayList<>();
+	                for (Process p : waitingList) {
+	                    if (memoryManager.allocate(p.getMemoryRequired())) {
+	                        p.setState("ready");
+	                        readyQueue.put(p);
+	                        toRemove.add(p);
+	                        System.out.println("[Thread 2 - JobLoader] Process "
+	                            + p.getProcessId() + " finally admitted.");
+	                    }
+	                }
+	                waitingList.removeAll(toRemove);
 	                Thread.sleep(10);
 	            } catch (InterruptedException e) {
 	                Thread.currentThread().interrupt();
 	                break;
 	            }
 	        }
-
 	    }
 
 	    /**
